@@ -1,0 +1,78 @@
+.name {
+	text-transform: capitalize;	
+}
+
+.proper {
+	text-transform: capitalize;	
+}
+
+body{
+	font-family:'Arial','Helvetica',sans-serif;
+}
+
+div#myForm{
+	text-align: left;
+}
+
+.myForm, #myForm{
+	margin: 0 auto;
+	background: url(../images/blueBG.png) no-repeat;
+	padding: 1px 20px;
+	text-align: center;
+	color: #999;
+	margin-top: 10px;
+	min-height: 370px;
+}
+#container{
+	width: 740px;
+	margin: 0 auto;
+}
+#container a.button, #createFieldsButton {	
+	color: white;
+	font-weight: bold;
+	padding: 6px 16px;
+	text-decoration: none;
+	margin: 10px 0;
+	-moz-border-radius: 6px;
+	-webkit-border-radius: 6px;
+	font-size: 14px;
+	border: 0;
+	outline: none;
+}
+#createFieldsButton {	
+	background: blue;
+	cursor: pointer;
+	float: right;
+	margin-right: 10px;
+	padding:4px 12px 5px 13px;
+}
+#container a.button {
+	background: #999;
+}
+#container a.button:hover, #container #createFieldsButton:hover, #container #runAgainLink:hover, #container #addToPageLayoutLink:hover {
+	background: #333;
+}
+.textEntry {
+	padding-top: 5px;
+	vertical-align: top;
+}
+#container input[disabled='true'] {
+	background: #D8D8D8;
+}
+#container #runAgainLink, #container #addToPageLayoutLink {
+	background: blue;
+}
+#changeObjectLink, #runAgainLink {
+	float: right; 
+	margin-top: 20px; 
+	margin-right: 30px;	
+}
+
+#container #runAgainLink {
+	background: blue;
+	margin-right: 10px;
+}
+#currentObject {
+	font-size: 30px; 
+	color: #333;
+}
