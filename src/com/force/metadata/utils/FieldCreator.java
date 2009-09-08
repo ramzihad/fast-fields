@@ -9,10 +9,8 @@ import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import com.sforce.soap.metadata.AsyncResult;
 import com.sforce.soap.metadata.CustomField;
 import com.sforce.soap.metadata.FieldType;
-import com.sforce.soap.metadata.MetadataConnection;
 import com.sforce.soap.metadata.Picklist;
 import com.sforce.soap.metadata.PicklistValue;
 import com.sforce.ws.ConnectionException;
@@ -28,6 +26,8 @@ public class FieldCreator {
 	
 	private String status; // should move this into an enumeration
 	private String error;
+	
+	private SalesforceConnection connection;
 	
 	public String getStatus() {
 		return status;
@@ -153,7 +153,7 @@ public class FieldCreator {
 	}
 	
 	private CustomField buildCustomField(String fieldName, FieldType fieldType) {
-		String devName = getDevName(fieldName);
+		String devName = FieldCreatorHelperFunctions.getDevName(fieldName);
 		
 		log.info("Creating custom field");
 		log.info("Field type: " + fieldType);
@@ -168,102 +168,29 @@ public class FieldCreator {
 		return cf;
 	}
 	
-	// remove all non alpha numberic characters
-	// replace spaces with underscores
-	// add an X if it starts with a number
-	public static String getDevName(String input) {
-		input = input.trim();
-		input = input.replaceAll("[^a-zA-Z0-9\\s]", "");
-		input = input.replaceAll(" ", "_");
-		input = input.replaceAll("^[0-9]","X" + input.substring(0,1));
+	public void sendToSalesforce() {
 		
-		// check for double underscores
-		input = input.replaceAll("[_]+", "_");
-		
-		// remove trailing underscores
-		input = input.replaceAll("[_]+$", "");
-		
-		input += "__c";
-		
-		return input;
+		connection = new SalesforceConnection(sessionId, endpointUrl);
+		try {
+			connection.createConnection();
+		} catch (ConnectionException e) {
+			String errorMessage = "Connection Exception with salesforce: " + e.getMessage();
+			handleError(errorMessage, e);
+		}
+		try {
+			CustomField[] fieldArr = fields.toArray(new CustomField[fields.size()]);
+			connection.sendToSalesforce(fieldArr);
+		} catch (Exception e) {
+			String errorMessage = "Exception during object creation: " + e.getMessage();
+			handleError(errorMessage, e);
+		}
+		status = "Success";
 	}
 	
-	public void sendToSalesforce() {
-
-		MetadataConnection connection;
-		// create connection
-		log.info("Creating Salesforce Metadata Connection...");
-		try {
-			connection = ConnectionManager.getMetadataConnection(sessionId, endpointUrl);			
-		} catch (ConnectionException e) {
-			log.warning("Connection Exception with salesforce: " + e.getMessage());
-			e.printStackTrace();
-			return;
-		}
-			
-		log.info("Connected to Salesforce");
-		
-		// go through the fields array and do the metatdata api call
-		AsyncResult[] ars;
-		log.info("Creating new custom fields...");
-		
-		try {
-			CustomField[] fieldPackage = fields.toArray(new CustomField[fields.size()]);
-			ars = connection.create(fieldPackage);
-		
-			log.info("Metadata sent to salesforce.  Checking status...");
-						
-            String[] ids = new String[ars.length];
-            for(int i = 0; i < ars.length; i++) {
-            	ids[i] = ars[i].getId();
-            }
-            boolean done = false;
-            long waitTimeMilliSecs = 1000;
-            AsyncResult[] arsStatus = null;
-            
-            while (!done) {
-            	
-                arsStatus = connection.checkStatus(ids);
-                
-                // check that all fields have been created and log the current status
-                done = true;
-                String[] statusArr = new String[arsStatus.length];
-                for(int i = 0; i < arsStatus.length; i++) {
-                	if(done && !arsStatus[i].isDone()) {
-                		done = false;
-                	}
-                	
-                	statusArr[i] = arsStatus[i].getState().toString();                	
-                	if (arsStatus[i].getStatusCode() != null )  {
-                        log.warning("Field creation failed. Reason: " + arsStatus[i].getMessage());
-                        status="Error";
-                        error="Field creation failed.  Reason: " + arsStatus[i].getMessage();                   
-                        return;
-                    }
-                }                
-                
-                Thread.sleep(waitTimeMilliSecs);
-                
-                // increase sleep time to max of 5 seconds
-                waitTimeMilliSecs = (long) (waitTimeMilliSecs * 1.5 > 5000 ? 5000 : waitTimeMilliSecs * 1.5);
-                String stateMessage = "Current Transaction States: ";
-                for(int i = 0; i < statusArr.length; i++) {
-                	stateMessage += statusArr[i] + ", ";
-                }
-				log.info(stateMessage);
-            }
-            status="Success";
-                  
-		} catch (ConnectionException e) {
-			status="Error";
-			error="Connection Exception: " + e.getMessage();
-			log.warning("There was a connection exception: " + e.getMessage());
-			e.printStackTrace();
-		} catch (InterruptedException e) {
-			status="Error";
-			error="Interrupted Exception: " + e.getMessage();
-			log.warning("There was a interrupted exception: " + e.getMessage());
-			e.printStackTrace();
-		}		
+	private void handleError(String errorMessage, Exception e) {
+		log.warning(errorMessage);
+		status = "Error";
+		error = errorMessage;
+		e.printStackTrace();
 	}
 }
