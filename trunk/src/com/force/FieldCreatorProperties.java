@@ -12,6 +12,8 @@ public class FieldCreatorProperties {
 	public static final String layoutBuilderServlet = "/layoutBuilderServlet";
 	public static final String layoutBuilderResult = "/jsp/layoutBuilderResult.jsp";
 	public static final String fieldCreatorResult = "/jsp/fieldCreatorResult.jsp";
+	public static final String objectCreatorServlet = "/objectCreatorServlet";
+	public static final String objectCreatorResult = "/jsp/objectCreatorResult.jsp";
 	
 	public static String getTypeIdForFieldNum(int i) {
 		return "field" + i + "Type";

@@ -87,8 +87,6 @@ public class FieldCreatorServlet extends HttpServlet {
 		creator.sendToSalesforce();
 		
 		String fieldList = creator.getEncodedCustomFields();
-		int i = 0;
-		i++;
 		req.setAttribute("fields", fieldList);
 		
 		String status = creator.getStatus();

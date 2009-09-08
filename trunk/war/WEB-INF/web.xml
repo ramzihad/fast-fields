@@ -20,6 +20,14 @@ http://java.sun.com/xml/ns/javaee/web-app_2_5.xsd" version="2.5">
 		<servlet-name>Layout Builder Servlet</servlet-name>
 		<url-pattern>/layoutBuilderServlet</url-pattern>
 	</servlet-mapping>
+	<servlet>
+		<servlet-name>Object Creator Servlet</servlet-name>
+		<servlet-class>com.force.ObjectCreatorServlet</servlet-class>
+	</servlet>
+	<servlet-mapping>
+		<servlet-name>Object Creator Servlet</servlet-name>
+		<url-pattern>/objectCreatorServlet</url-pattern>
+	</servlet-mapping>
 	<welcome-file-list>
 		<welcome-file>index.html</welcome-file>
 	</welcome-file-list>
