@@ -176,13 +176,15 @@ public class FieldCreator {
 		} catch (ConnectionException e) {
 			String errorMessage = "Connection Exception with salesforce: " + e.getMessage();
 			handleError(errorMessage, e);
+			return;
 		}
 		try {
 			CustomField[] fieldArr = fields.toArray(new CustomField[fields.size()]);
 			connection.sendToSalesforce(fieldArr);
 		} catch (Exception e) {
-			String errorMessage = "Exception during object creation: " + e.getMessage();
+			String errorMessage = "Exception (" + e.getClass().getCanonicalName() + ") during field creation: " + e.getMessage();
 			handleError(errorMessage, e);
+			return;
 		}
 		status = "Success";
 	}

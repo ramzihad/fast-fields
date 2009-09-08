@@ -93,7 +93,14 @@ public class FieldCreatorServlet extends HttpServlet {
 		req.setAttribute("status", status);
 		
 		if(status == "Error") {
-			req.setAttribute("error",creator.getError());
+			String errorMessage = creator.getError();			
+			// check for error specific to a bug in the integration package
+			// and if it's found notify the user to upgrade to latest package
+			if(errorMessage.contains("Failed to get next element")) {
+				errorMessage += ".  This error is caused by a bug in your version of Fields Fast!!!  This can be fixed by uninstalling and reinstalling the current package.  " +
+						"Demo Component Url (62-org): " + FieldCreatorProperties.demoComponentUrl;
+			}
+			req.setAttribute("error",errorMessage);
 		} else {
 			req.setAttribute("error", "0");
 		}
@@ -107,6 +114,7 @@ public class FieldCreatorServlet extends HttpServlet {
 				layoutBuilderUrl += param + "=" + req.getParameter(param) + "&";
 			}
 		}
+		
 		// add info for custom fields created
 		layoutBuilderUrl += "fields=" + creator.fieldNameList();
 		
@@ -115,7 +123,5 @@ public class FieldCreatorServlet extends HttpServlet {
 			
 		RequestDispatcher rd = req.getRequestDispatcher(FieldCreatorProperties.fieldCreatorResult);
 		rd.forward(req, resp);		
-	}
-
-	
+	}	
 }

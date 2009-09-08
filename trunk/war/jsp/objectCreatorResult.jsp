@@ -10,7 +10,7 @@
 <div id="container">
 	<div id="myForm" action="../fieldCreatorServlet">
 		<div id="header">
-		I'll want to put some buttons up here
+			<a id="runAgainLink" class="button" href="<%= request.getAttribute("fieldCreatorUrl") %>">Create Fields</a>
 		</div>
 
 <% if ( request.getAttribute("status") == "Success" ) { %>

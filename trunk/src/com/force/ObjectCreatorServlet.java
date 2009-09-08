@@ -1,6 +1,7 @@
 package com.force;
 
 import java.io.IOException;
+import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -10,6 +11,7 @@ import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
+import com.force.metadata.utils.FieldCreatorHelperFunctions;
 import com.force.metadata.utils.ObjectCreator;
 
 public class ObjectCreatorServlet extends HttpServlet {
@@ -21,6 +23,7 @@ public class ObjectCreatorServlet extends HttpServlet {
 	private String serverUrl;
 	private String objectName;
 	
+	@SuppressWarnings("unchecked")
 	public void doGet(HttpServletRequest req, HttpServletResponse resp) throws IOException, ServletException {
 		log.setLevel(Level.ALL);
 		log.info("Starting Object Creator");
@@ -35,6 +38,7 @@ public class ObjectCreatorServlet extends HttpServlet {
 		log.info("Sending to salesforce");
 		creator.sendToSalesforce();
 		
+		// gather status/error info and pass to result jsp page
 		String status = creator.getStatus();
 		req.setAttribute("status", status);
 		
@@ -43,6 +47,16 @@ public class ObjectCreatorServlet extends HttpServlet {
 		} else {
 			req.setAttribute("error", "0");
 		}
+		
+		// build navigation urls
+		String fieldCreatorUrl = FieldCreatorProperties.fieldCreatorURL + "?";
+		Set<String> params = req.getParameterMap().keySet();
+		for(String param : params) {
+			fieldCreatorUrl += param + "=" + req.getParameter(param) + "&";				
+		}
+		fieldCreatorUrl += "&objectLabel=" + objectName;
+		fieldCreatorUrl += "&objectName=" + FieldCreatorHelperFunctions.getDevName(objectName);
+		req.setAttribute("fieldCreatorUrl", fieldCreatorUrl);
 		
 		RequestDispatcher rd = req.getRequestDispatcher(FieldCreatorProperties.objectCreatorResult);
 		rd.forward(req,resp);
