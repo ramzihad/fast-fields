@@ -14,6 +14,7 @@ public class FieldCreatorProperties {
 	public static final String fieldCreatorResult = "/jsp/fieldCreatorResult.jsp";
 	public static final String objectCreatorServlet = "/objectCreatorServlet";
 	public static final String objectCreatorResult = "/jsp/objectCreatorResult.jsp";
+	public static final String demoComponentUrl = "https://na1.salesforce.com/a2x3000000000RW";
 	
 	public static String getTypeIdForFieldNum(int i) {
 		return "field" + i + "Type";
