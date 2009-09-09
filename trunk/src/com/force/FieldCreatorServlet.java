@@ -2,7 +2,6 @@ package com.force;
 
 import java.io.IOException;
 import java.security.InvalidParameterException;
-import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -11,33 +10,30 @@ import javax.servlet.ServletException;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+import javax.servlet.http.HttpSession;
 
 import com.force.metadata.utils.FieldCreator;
+import com.force.metadata.utils.SalesforceConnection;
 
 public class FieldCreatorServlet extends HttpServlet {
 
 	private static final long serialVersionUID = 1L;
 	private static final Logger log = Logger.getLogger(FieldCreatorServlet.class.getName());
 	
-	private String sessionId;
-	private String serverUrl;
-	private String objectName;
-	
-	@SuppressWarnings("unchecked")
 	public void doGet(HttpServletRequest req, HttpServletResponse resp) throws IOException, ServletException {
 		
 		log.setLevel(Level.ALL);
 		
-		log.info("Staring field creator...");
+		log.info("Starting Field Creator...");
 		
-		sessionId = req.getParameter("sid");
-		serverUrl = req.getParameter("srv");
-		objectName = req.getParameter("objectName");	
-		
-		FieldCreator creator = new FieldCreator(sessionId, serverUrl, objectName);
+		HttpSession session = req.getSession();		
+		SalesforceConnection connection = (SalesforceConnection) session.getAttribute("connection");
+		String objectName = (String) session.getAttribute("objectName");
+		FieldCreator creator = new FieldCreator(objectName,connection);
 		
 		log.info("Field creator initialized");
 		
+		// process fields, we don't 
 		for(int i = 1; i <= FieldCreatorProperties.entryRows; i++) {			
 			
 			log.info("Processing Field " + i);
@@ -64,23 +60,12 @@ public class FieldCreatorServlet extends HttpServlet {
 			try {
 				creator.addField(fieldName, fieldType, fieldDecimals, fieldValues);
 			} catch(InvalidParameterException e) {
-			
 				log.warning("Invalid param exception: " + e.getMessage());
 				log.warning("Field Number: " + i);
 				log.warning("Field Name:" + fieldName);
 				log.warning("Field Type:" + fieldType);
 				log.warning("Field Decimals: " + fieldDecimals);
-				log.warning("Field Values: " + fieldValues);
-			
-			} catch(Exception e) {
-				
-				log.warning("Exception: " + e.getMessage());
-				log.warning("Field Number: " + i);
-				log.warning("Field Name:" + fieldName);
-				log.warning("Field Type:" + fieldType);
-				log.warning("Field Decimals: " + fieldDecimals);
-				log.warning("Field Values: " + fieldValues);
-		
+				log.warning("Field Values: " + fieldValues);			
 			}
 		}	
 	
@@ -105,22 +90,11 @@ public class FieldCreatorServlet extends HttpServlet {
 			req.setAttribute("error", "0");
 		}
 		
-		String fieldCreatorUrl = FieldCreatorProperties.fieldCreatorURL + "?";
+		// build url with field params for layout builder
 		String layoutBuilderUrl = FieldCreatorProperties.layoutBuilderServlet + "?";
-		Set<String> params = req.getParameterMap().keySet();
-		for(String param : params) {
-			if(!param.startsWith("field")) {
-				fieldCreatorUrl += param + "=" + req.getParameter(param) + "&";
-				layoutBuilderUrl += param + "=" + req.getParameter(param) + "&";
-			}
-		}
-		
-		// add info for custom fields created
 		layoutBuilderUrl += "fields=" + creator.fieldNameList();
-		
-		req.setAttribute("fieldCreatorUrl",fieldCreatorUrl);
 		req.setAttribute("layoutBuilderUrl",layoutBuilderUrl);
-			
+		
 		RequestDispatcher rd = req.getRequestDispatcher(FieldCreatorProperties.fieldCreatorResult);
 		rd.forward(req, resp);		
 	}	

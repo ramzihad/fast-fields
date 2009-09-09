@@ -13,14 +13,11 @@ import com.sforce.soap.metadata.CustomField;
 import com.sforce.soap.metadata.FieldType;
 import com.sforce.soap.metadata.Picklist;
 import com.sforce.soap.metadata.PicklistValue;
-import com.sforce.ws.ConnectionException;
 
 public class FieldCreator {
 	private static final Logger log = Logger.getLogger(FieldCreator.class.getName());
 	private static final Map<String, FieldType> fieldTypeMapping;
 	
-	private String sessionId;
-	private String endpointUrl;
 	private String objectName;
 	private List<CustomField> fields;
 	
@@ -103,15 +100,13 @@ public class FieldCreator {
 		fieldTypeMapping.put("longTextArea", FieldType.LongTextArea);
 		fieldTypeMapping.put("email", FieldType.Email);
 	}
-
-	public FieldCreator(String sessionId, String endpointUrl, String objectName) {
+	
+	public FieldCreator(String objectName, SalesforceConnection connection) {
 		log.setLevel(Level.ALL);
-		
-		this.sessionId = sessionId;
-		this.endpointUrl = endpointUrl;
+		this.connection = connection;
 		this.objectName = objectName;
 		fields = new ArrayList<CustomField>();
-		status = "Initialized";
+		status = "Initialized";		
 	}
 	
 	public void addField(String fieldName, String fieldType, Integer decimals, String[] values) throws InvalidParameterException {
@@ -169,15 +164,6 @@ public class FieldCreator {
 	}
 	
 	public void sendToSalesforce() {
-		
-		connection = new SalesforceConnection(sessionId, endpointUrl);
-		try {
-			connection.createConnection();
-		} catch (ConnectionException e) {
-			String errorMessage = "Connection Exception with salesforce: " + e.getMessage();
-			handleError(errorMessage, e);
-			return;
-		}
 		try {
 			CustomField[] fieldArr = fields.toArray(new CustomField[fields.size()]);
 			connection.sendToSalesforce(fieldArr);

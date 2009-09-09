@@ -8,23 +8,15 @@
 <script src="../js/gen_validatorv31.js" type="text/javascript"></script>
 <script src="http://ajax.googleapis.com/ajax/libs/prototype/1.6.0.3/prototype.js"></script>
 </head>
-<body onload="init();">
-<script>
-var init = function() {
-	fillParams();
-	setObjectName();
-	setChangeObjectUrl();
-	startFocus();
-}
-</script>
+<body onload="startFocus();">
 <center>
 <div id="container">
 	
 	<form id="myForm" action="../fieldCreatorServlet">
 		<div id="header">
-			<a id="changeObjectLink" class="button" href="#" target="_top">Switch Object</a>
+			<a id="changeObjectLink" class="button" href="<%= (String) session.getAttribute("returnUrl") %>" target="_top">Switch Object</a>
 			<input type="submit" id="createFieldsButton" value="Create Fields"/>			
-			<h3 style="text-align: left;">current object  <span id="currentObject"></span></h3>
+			<h3 style="text-align: left;">current object  <span id="currentObject"><%= (String) session.getAttribute("objectLabel") %></span></h3>
 		</div>
 		<table style="text-align: center; margin: 0 auto;" cellpadding="5" rules="rows">
 			<tbody id="insertTarget">

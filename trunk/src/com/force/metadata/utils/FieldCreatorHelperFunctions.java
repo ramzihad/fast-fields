@@ -21,5 +21,12 @@ public class FieldCreatorHelperFunctions {
 		
 		return input;
 	}
-
+	
+	// create metadata api url from pod
+	// https://na1.api.salesforce.com/services/Soap/m/15.0/00D30000000YXDL
+	@Deprecated
+	public static String getMetadataEndpointUrl(String pod, String organizationId) {
+		return "https://" + pod + ".api.salesforce.com/services/Soap/" + organizationId;
+	}
+	
 }
