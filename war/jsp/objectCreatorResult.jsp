@@ -1,4 +1,5 @@
 <%@ page contentType="text/html;charset=UTF-8" language="java" %>
+<%@ page import="com.force.FieldCreatorProperties" %>
 
 <html>
 <head>
@@ -10,7 +11,8 @@
 <div id="container">
 	<div id="myForm" action="../fieldCreatorServlet">
 		<div id="header">
-			<a id="runAgainLink" class="button" href="<%= request.getAttribute("fieldCreatorUrl") %>">Create Fields</a>
+			<a id="runAgainLink" class="button" href="..<%= FieldCreatorProperties.fieldCreatorURL %>">Add Fields</a>
+			<h3 style="text-align: left;">current object  <span id="currentObject"><%= (String) session.getAttribute("objectLabel") %></span></h3>
 		</div>
 
 <% if ( request.getAttribute("status") == "Success" ) { %>

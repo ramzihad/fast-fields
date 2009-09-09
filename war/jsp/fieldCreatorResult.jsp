@@ -1,6 +1,5 @@
 <%@ page contentType="text/html;charset=UTF-8" language="java" %>
 <%@ page import="com.force.FieldCreatorProperties" %>
-<%@ page import="java.net.URLDecoder" %>
 <%@ page import="java.util.List" %>
 <%@ page import="java.lang.String" %>
 
@@ -14,9 +13,9 @@
 <div id="container">
 	<div id="myForm" action="../fieldCreatorServlet">
 		<div id="header">
-			<a id="changeObjectLink" class="button" href="<%= request.getParameter("retUrl") %>" target="_top">Switch Object</a>
-			<a id="runAgainLink" class="button" href="<%= request.getAttribute("fieldCreatorUrl") %>">Create More Fields</a>			
-			<h3 style="text-align: left;">current object  <span id="currentObject"><%= URLDecoder.decode(request.getParameter("objectLabel")) %></span></h3>
+			<a id="changeObjectLink" class="button" href="<%= (String) session.getAttribute("returnUrl") %>" target="_top">Switch Object</a>
+			<a id="runAgainLink" class="button" href="..<%= FieldCreatorProperties.fieldCreatorURL %>">Create More Fields</a>			
+			<h3 style="text-align: left;">current object  <span id="currentObject"><%= (String) session.getAttribute("objectLabel") %></span></h3>
 		</div>
 
 <% if ( request.getAttribute("status") == "Success" ) { %>
@@ -32,11 +31,8 @@
 <% } %>
 
 <%
-// TODO: need to move the decoding into a jsp helper class
 String rawEncodedFields = (String) request.getAttribute("fields"); 
-
 String[] encodedFields = FieldCreatorProperties.decodeFields(rawEncodedFields);
-
 for(String field : encodedFields) {
 %>			
 	<p><ul>
