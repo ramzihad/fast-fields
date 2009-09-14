@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<web-app xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+xmlns="http://java.sun.com/xml/ns/javaee"
+xmlns:web="http://java.sun.com/xml/ns/javaee/web-app_2_5.xsd"
+xsi:schemaLocation="http://java.sun.com/xml/ns/javaee
+http://java.sun.com/xml/ns/javaee/web-app_2_5.xsd" version="2.5">
+	<servlet>
+		<servlet-name>Field Creator Servlet</servlet-name>
+		<servlet-class>com.force.FieldCreatorServlet</servlet-class>
+	</servlet>
+	<servlet-mapping>
+		<servlet-name>Field Creator Servlet</servlet-name>
+		<url-pattern>/fieldCreatorServlet</url-pattern>
+	</servlet-mapping>
+	<servlet>
+		<servlet-name>Layout Builder Servlet</servlet-name>
+		<servlet-class>com.force.LayoutBuilderServlet</servlet-class>
+	</servlet>
+	<servlet-mapping>
+		<servlet-name>Layout Builder Servlet</servlet-name>
+		<url-pattern>/layoutBuilderServlet</url-pattern>
+	</servlet-mapping>
+	<servlet>
+		<servlet-name>Object Creator Servlet</servlet-name>
+		<servlet-class>com.force.ObjectCreatorServlet</servlet-class>
+	</servlet>
+	<servlet-mapping>
+		<servlet-name>Object Creator Servlet</servlet-name>
+		<url-pattern>/objectCreatorServlet</url-pattern>
+	</servlet-mapping>
+	<welcome-file-list>
+		<welcome-file>index.html</welcome-file>
+	</welcome-file-list>
+</web-app>
