@@ -13,17 +13,36 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 import java.util.zip.ZipOutputStream;
 
+import com.sforce.soap.metadata.AsyncRequestState;
+import com.sforce.soap.metadata.AsyncResult;
+import com.sforce.soap.metadata.CodeCoverageWarning;
+import com.sforce.soap.metadata.DeployMessage;
+import com.sforce.soap.metadata.DeployOptions;
+import com.sforce.soap.metadata.DeployResult;
 import com.sforce.soap.metadata.FileProperties;
+import com.sforce.soap.metadata.ListMetadataQuery;
+import com.sforce.soap.metadata.MetadataConnection;
+import com.sforce.soap.metadata.Package;
+import com.sforce.soap.metadata.PackageTypeMembers;
+import com.sforce.soap.metadata.RetrieveMessage;
+import com.sforce.soap.metadata.RetrieveRequest;
+import com.sforce.soap.metadata.RetrieveResult;
+import com.sforce.soap.metadata.RunTestFailure;
+import com.sforce.soap.metadata.RunTestsResult;
 import com.sforce.ws.ConnectionException;
 
 public class LayoutBuilder {
 
 	private static final Logger log = Logger.getLogger(LayoutBuilder.class.getName());
+	private static final double API_VERSION = 15.0; 
+	private static final long ONE_SECOND = 1000;
+	private static final int MAX_NUM_POLL_REQUESTS = 50;
 	private static final String SPLICE_SENTINEL = "XX__SPLICE__XX";
 
 	private String objectName;
-	private SalesforceConnection connection;
+	private MetadataConnection connection = null;
 	private List<String> layouts;
+	//private List<OutputStream> rawLayoutMetadatum;
 	private String packageXml;
 	private String packageXmlName;
 	private List<String> customFieldsToAppend;
@@ -40,65 +59,36 @@ public class LayoutBuilder {
 		return error;
 	}
 	
-	private void handleError(String errorMessage, Exception e) {
-		log.warning(errorMessage);
+	private void setError(String message) {
 		status = "Error";
-		error = errorMessage;
-		e.printStackTrace();
+		error = message;
 	}
 	
-	private Boolean checkError() {
-		return status.equals("Error");
-	}
-	
-	public LayoutBuilder(String objectName, List<String> fields, SalesforceConnection connection) {
+	public LayoutBuilder(String sessionId, String endpointUrl, String objectName, List<String> fields) throws Exception {
+		status = "Initialized";
+		error = "";
 		this.objectName = objectName;
 		this.customFieldsToAppend = fields;
-		this.connection = connection;
-		layoutMap = new HashMap<String, String>();		
-		status = "Initialized";
+		layoutMap = new HashMap<String, String>();
+		
+		try {
+			connection = ConnectionManager.getMetadataConnection(sessionId, endpointUrl);
+		} catch (ConnectionException e) {
+			setError("Connection Exception: " + e.getMessage());
+			log.warning("Connection Exception: " + e.getMessage());
+			e.printStackTrace();
+		}
 	}
 	
 	public void buildLayouts() throws Exception {
 		listLayouts();
 		retrieveLayouts();
-		if(checkError()) return;
 		processLayouts();
 		buildZipAndDeploy();
-		if(checkError()) return;		
 		status = "Success";
 	}
 	
-	private void retrieveLayouts() throws IOException {
-		
-		ByteArrayInputStream bais = null;
-		try {
-			bais = new ByteArrayInputStream(connection.retrieveLayouts(layouts));
-		} catch (Exception e) {
-			String errorMessage = "Exception (" + e.getClass().getCanonicalName() + ") during page layout deployment: " + e.getMessage();
-			handleError(errorMessage, e);
-			return;
-		}
-
-		ZipInputStream zis = new ZipInputStream(bais);
-        ZipEntry entry;
-        
-        while((entry = zis.getNextEntry()) != null) {
-        	if(!entry.getName().contains("package.xml")) {
-        		layoutMap.put(entry.getName(),readData(zis).toString());
-        	} else {
-        		packageXml = readData(zis).toString();
-        		packageXmlName = entry.getName();
-        	}
-        	zis.closeEntry();
-        }
-        
-        bais.close();
-        zis.close();
-		
-	}
-
-	private void buildZipAndDeploy() throws IOException {
+	private void buildZipAndDeploy() throws Exception {
 		ByteArrayOutputStream baos = new ByteArrayOutputStream();
 		ZipOutputStream zout = new ZipOutputStream(baos);
 		
@@ -118,14 +108,113 @@ public class LayoutBuilder {
 		zout.write(packageXml.getBytes());
 		zout.close();
 		baos.flush();		
+		//testZipCreation(baos);
+		deployZipToSalesforce(baos.toByteArray());
 		
-		try {
-			connection.deployZipToSalesforce(baos.toByteArray());
-		} catch (Exception e) {
-			String errorMessage = "Exception (" + e.getClass().getCanonicalName() + ") during page layout deployment: " + e.getMessage();
-			handleError(errorMessage, e);
-		}		
 	}
+	
+	private void deployZipToSalesforce(byte[] zipBytes) throws Exception {
+		DeployOptions deployOptions = new DeployOptions();
+		deployOptions.setPerformRetrieve(false);
+		deployOptions.setRollbackOnError(true);
+		
+        AsyncResult asyncResult = connection.deploy(zipBytes, deployOptions);
+        
+        // Wait for the deploy to complete
+        int poll = 0;
+        long waitTimeMilliSecs = ONE_SECOND;
+        while (!asyncResult.isDone()) {
+            Thread.sleep(waitTimeMilliSecs);
+            // double the wait time for the next iteration
+            waitTimeMilliSecs *= 2;
+            if (poll++ > MAX_NUM_POLL_REQUESTS) {
+            	setError("Request timed out.  Give it another try.");
+                throw new Exception("Request timed out. If this is a large set " +
+                        "of metadata components, check that the time allowed by " +
+                        "MAX_NUM_POLL_REQUESTS is sufficient.");
+            }
+            asyncResult = connection.checkStatus(
+                    new String[] {asyncResult.getId()})[0];
+            System.out.println("Status is: " + asyncResult.getState());
+        }
+
+        if (asyncResult.getState() != AsyncRequestState.Completed) {
+        	setError(asyncResult.getStatusCode() + " msg: " + asyncResult.getMessage());
+        	throw new Exception(asyncResult.getStatusCode() + " msg: " +
+                    asyncResult.getMessage());
+        }
+
+        DeployResult result = connection.checkDeployStatus(asyncResult.getId());
+        if (!result.isSuccess()) {
+            setError(printErrors(result));            
+            throw new Exception("The files were not successfully deployed");
+        }
+	}
+	
+    /**
+     * Print out any errors, if any, related to the deploy.
+     * @param result - DeployResult
+     */
+    private String printErrors(DeployResult result)
+    {
+        DeployMessage messages[] = result.getMessages();
+        StringBuilder buf = new StringBuilder("Failures:\n");
+        for (DeployMessage message : messages) {
+            if (!message.isSuccess()) {
+                String loc = (message.getLineNumber() == 0 ? "" :
+                    ("(" + message.getLineNumber() + "," +
+                            message.getColumnNumber() + ")"));
+                if (loc.length() == 0
+                        && !message.getFileName().equals(message.getFullName())) {
+                    loc = "(" + message.getFullName() + ")";
+                }
+                buf.append(message.getFileName() + loc + ":" +
+                        message.getProblem()).append('\n');
+            }
+        }
+        RunTestsResult rtr = result.getRunTestResult();
+        if (rtr.getFailures() != null) {
+            for (RunTestFailure failure : rtr.getFailures()) {
+                String n = (failure.getNamespace() == null ? "" :
+                    (failure.getNamespace() + ".")) + failure.getName();
+                buf.append("Test failure, method: " + n + "." +
+                        failure.getMethodName() + " -- " +
+                        failure.getMessage() + " stack " +
+                        failure.getStackTrace() + "\n\n");
+            }
+        }
+        if (rtr.getCodeCoverageWarnings() != null) {
+            for (CodeCoverageWarning ccw : rtr.getCodeCoverageWarnings()) {
+                buf.append("Code coverage issue");
+                if (ccw.getName() != null) {
+                    String n = (ccw.getNamespace() == null ? "" :
+                        (ccw.getNamespace() + ".")) + ccw.getName();
+                    buf.append(", class: " + n);
+                }
+                buf.append(" -- " + ccw.getMessage() + "\n");
+            }
+        }
+        
+        System.out.println(buf.toString());
+        return buf.toString();
+    }
+
+	
+//	private void testZipCreation(ByteArrayOutputStream zipOutput) throws IOException {
+//        
+//		// Parse zip file
+//        System.out.println("Testing output zip file");
+//        ByteArrayInputStream bais = new ByteArrayInputStream(zipOutput.toByteArray());
+//        ZipInputStream zis = new ZipInputStream(bais);
+//
+//        ZipEntry entry;
+//        while((entry = zis.getNextEntry()) != null) {
+//        	System.out.println("Entry Name: " + entry.getName());
+//        	//System.out.println("Zip Entry:");
+//        	System.out.println(readData(zis).toString());
+//        	zis.closeEntry();
+//        }
+//	}
 	
 	private void processLayouts() throws IOException {
 		for(String layoutMetadata : layoutMap.keySet()) {
@@ -201,22 +290,119 @@ public class LayoutBuilder {
 		try {
 			String component = "Layout";
 	        String optionalFolder = null;
-	        FileProperties[] layoutResult;
-	        layoutResult = connection.listMetadata(component, optionalFolder);
+	        ListMetadataQuery query = new ListMetadataQuery();
+	        query.setFolder(optionalFolder);
+	        query.setType(component);
 	        
-	        if (layoutResult != null) {
-	            for (FileProperties n : layoutResult) {
+	        FileProperties[] lmr;
+			
+			lmr = connection.listMetadata(
+			    	new ListMetadataQuery[] {query});
+			
+	        if (lmr != null) {
+	            for (FileProperties n : lmr) {
 	            	if(n.getFullName().startsWith(objectName + "-")) {
 	            		layouts.add(n.getFullName());
 	            	}
 	            }
 	        }            
-		} catch (ConnectionException e) {			
-			String errorMessage = "Connection Exception: " + e.getMessage();
-			handleError(errorMessage, e);
+		} catch (ConnectionException e) {
+			setError("Connection Exception: " + e.getMessage());
+			log.warning("Connection Exception: " + e.getMessage());
+			e.printStackTrace();
 		}
 
-	}	
+	}
+	
+	private void retrieveLayouts() throws Exception {
+		
+		PackageTypeMembers[] packageMembers = new PackageTypeMembers[1];
+		packageMembers[0] = new PackageTypeMembers();
+		packageMembers[0].setName("Layout");
+		packageMembers[0].setMembers( layouts.toArray(new String[layouts.size()]));
+		
+		Package layoutManifest = new Package();
+		layoutManifest.setVersion(String.valueOf(API_VERSION));
+		layoutManifest.setTypes(packageMembers);
+		
+		RetrieveRequest retrieveRequest = new RetrieveRequest();
+		retrieveRequest.setApiVersion(API_VERSION);
+		retrieveRequest.setUnpackaged(layoutManifest);
+		
+		AsyncResult helloRequest = null;
+		
+		try {
+			helloRequest = connection.retrieve(retrieveRequest);
+		} catch (ConnectionException e) {
+			setError("Connection Exception: " + e.getMessage());
+			log.warning("Connection Exception: " + e.getMessage());
+			e.printStackTrace();
+		}
+		
+		// Wait for the retrieve to complete
+        int poll = 0;
+        long waitTimeMilliSecs = ONE_SECOND;
+        while (!helloRequest.isDone()) {
+            try {
+				Thread.sleep(waitTimeMilliSecs);
+			} catch (InterruptedException e) {
+				e.printStackTrace();
+			}
+			
+            // double the wait time for the next iteration
+            waitTimeMilliSecs *= 2;
+            if (poll++ > MAX_NUM_POLL_REQUESTS) {
+            	setError("Request timed out.  Give it another try.");
+                throw new Exception("Request timed out.  If this is a large set " +
+                		"of metadata components, check that the time allowed " +
+                		"by MAX_NUM_POLL_REQUESTS is sufficient.");
+            }
+            helloRequest = connection.checkStatus(
+            		new String[] {helloRequest.getId()})[0];
+            System.out.println("Status is: " + helloRequest.getState());
+        }
+
+        if (helloRequest.getState() != AsyncRequestState.Completed) {
+            throw new Exception(helloRequest.getStatusCode() + " msg: " +
+                    helloRequest.getMessage());
+        }
+
+        RetrieveResult result = connection.checkRetrieveStatus(helloRequest.getId());
+        
+        // Print out any warning messages
+        StringBuilder buf = new StringBuilder();
+        if (result.getMessages() != null) {
+            for (RetrieveMessage rm : result.getMessages()) {
+                buf.append(rm.getFileName() + " - " + rm.getProblem());
+            }
+        }
+        if (buf.length() > 0) {
+        	setError("Retrive warnings: " + buf);
+            System.out.println("Retrieve warnings:\n" + buf);
+        }
+        
+        // Parse zip file
+        System.out.println("Parsing zip files");
+        ByteArrayInputStream bais = new ByteArrayInputStream(result.getZipFile());
+        ZipInputStream zis = new ZipInputStream(bais);
+
+        //rawLayoutMetadatum = new ArrayList<OutputStream>();
+        ZipEntry entry;
+        while((entry = zis.getNextEntry()) != null) {
+        	if(!entry.getName().contains("package.xml")) {
+        		//rawLayoutMetadatum.add(readData(zis));
+        		layoutMap.put(entry.getName(),readData(zis).toString());
+        	} else {
+        		packageXml = readData(zis).toString();
+        		packageXmlName = entry.getName();
+        	}
+        	zis.closeEntry();
+        }
+        
+        bais.close();
+        zis.close();
+        
+	}
 	
 	private OutputStream readData(ZipInputStream zis) throws IOException {
 		final int BUFFER_SIZE = 2;

@@ -7,19 +7,13 @@ import com.force.metadata.utils.FieldCreator;
 
 public class FieldCreatorProperties {
 	
-	// NB: careful changing url prop names as jsp won't automatically refactor 
 	public static final int entryRows = 10;
 	public static final String fieldCreatorURL = "/jsp/fieldCreatorSelector.jsp";
-	public static final String fieldCreatorResult = "/jsp/fieldCreatorResult.jsp";
-	public static final String fieldCreatorServlet = "/fieldCreatorServlet";
-	
 	public static final String layoutBuilderServlet = "/layoutBuilderServlet";
 	public static final String layoutBuilderResult = "/jsp/layoutBuilderResult.jsp";
-	
-	public static final String objectCreator = "/jsp/objectCreator.jsp";
+	public static final String fieldCreatorResult = "/jsp/fieldCreatorResult.jsp";
 	public static final String objectCreatorServlet = "/objectCreatorServlet";
 	public static final String objectCreatorResult = "/jsp/objectCreatorResult.jsp";
-	
 	public static final String demoComponentUrl = "https://na1.salesforce.com/a2x3000000000RW";
 	
 	public static String getTypeIdForFieldNum(int i) {

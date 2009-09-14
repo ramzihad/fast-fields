@@ -3,6 +3,7 @@ package com.force;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Set;
 import java.util.logging.Logger;
 
 import javax.servlet.RequestDispatcher;
@@ -10,27 +11,31 @@ import javax.servlet.ServletException;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
-import javax.servlet.http.HttpSession;
 
 import com.force.metadata.utils.LayoutBuilder;
-import com.force.metadata.utils.SalesforceConnection;
 
 public class LayoutBuilderServlet extends HttpServlet {
 
 	private static final long serialVersionUID = 1L;
-	private static final Logger log = Logger.getLogger(FieldCreatorServlet.class.getName());
-
+private static final Logger log = Logger.getLogger(FieldCreatorServlet.class.getName());
+	
+	private String sessionId;
+	private String serverUrl;
+	private String objectName;
+	private List<String> fieldList;
+	
+	@SuppressWarnings("unchecked")
 	public void doGet(HttpServletRequest req, HttpServletResponse resp) throws IOException, ServletException {
 		
-		HttpSession session = req.getSession();
-		String objectName = (String) session.getAttribute("objectName");
-		SalesforceConnection connection = (SalesforceConnection) session.getAttribute("connection");
+		sessionId = req.getParameter("sid");
+		serverUrl = req.getParameter("srv");
+		objectName = req.getParameter("objectName");
 		String temp[] = req.getParameter("fields").split(",");
-		List<String >fieldList = Arrays.asList(temp);
+		fieldList = Arrays.asList(temp);
 		
 		LayoutBuilder builder = null;
-		try {			
-			builder = new LayoutBuilder(objectName, fieldList,connection);
+		try {
+			builder = new LayoutBuilder(sessionId,serverUrl,objectName,fieldList);
 			builder.buildLayouts();
 		} catch (Exception e) {
 			log.warning("Exception while building layouts: " + e.getMessage());
@@ -45,6 +50,18 @@ public class LayoutBuilderServlet extends HttpServlet {
 		} else {
 			req.setAttribute("error", "0");
 		}
+		
+		String fieldCreatorUrl = FieldCreatorProperties.fieldCreatorURL + "?";		
+		Set<String> params = req.getParameterMap().keySet();
+		for(String param : params) {
+			if(!param.startsWith("field")) {
+				fieldCreatorUrl += param + "=" + req.getParameter(param) + "&";				
+			} else if (param.equals("fields")) {
+				fieldCreatorUrl += "oldFields=" + req.getParameter(param) + "&";
+			}
+		}
+		
+		req.setAttribute("fieldCreatorUrl",fieldCreatorUrl);
 		
 		RequestDispatcher rd = req.getRequestDispatcher(FieldCreatorProperties.layoutBuilderResult);
 		rd.forward(req, resp);

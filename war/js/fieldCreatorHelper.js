@@ -1,7 +1,5 @@
 // pull the values for the metadata server url, session id, and object name into the html form
-// NO LONGER USED
 var fillParams = function() {
-	alert("fillParams is deprecated");
 	var url = location.href;
 	var params = url.slice(url.indexOf('?')+1).split('&');	
 	for (i=0; i < params.length; i++) {
@@ -12,16 +10,12 @@ var fillParams = function() {
 }
 
 // display the label for the object being operated on
-// NO LONGER USED
 var setObjectName = function() {
-	alert("set objectname is deprecated");
 	$("currentObject").innerHTML = unescape($("objectLabel").value);
 }
 
 // set the change object url to return back to salesforce
-// NO LONGER USED
 var setChangeObjectUrl = function() {
-	alert("setChangeObjectURL is deprecated");
 	$("changeObjectLink").href=$("retUrl").value;
 }
 

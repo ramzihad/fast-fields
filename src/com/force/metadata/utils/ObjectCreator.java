@@ -8,10 +8,13 @@ import com.sforce.soap.metadata.CustomObject;
 import com.sforce.soap.metadata.DeploymentStatus;
 import com.sforce.soap.metadata.FieldType;
 import com.sforce.soap.metadata.SharingModel;
+import com.sforce.ws.ConnectionException;
 
 public class ObjectCreator {
 	private static final Logger log = Logger.getLogger(ObjectCreator.class.getName());
 	
+	private String sessionId;
+	private String endpointUrl;
 	private String objectName;
 	
 	private String status;
@@ -29,11 +32,15 @@ public class ObjectCreator {
 		return error;
 	}
 	
-	public ObjectCreator(String objectName, SalesforceConnection connection) {
+	public ObjectCreator(String sessionId, String endpointUrl, String objectName) {
 		log.setLevel(Level.ALL);
-		this.connection = connection;
+		
+		this.sessionId = sessionId;
+		this.endpointUrl = endpointUrl;
 		this.objectName = objectName;
 		status = "Initialized";
+		error = "";
+		
 		buildObject();
 	}
 	
@@ -60,7 +67,14 @@ public class ObjectCreator {
 		customObject.setNameField(nameField);	
 	}
 	
-	public void sendToSalesforce() {		
+	public void sendToSalesforce() {
+		connection = new SalesforceConnection(sessionId, endpointUrl);
+		try {
+			connection.createConnection();
+		} catch (ConnectionException e) {
+			String errorMessage = "Connection Exception with salesforce: " + e.getMessage();
+			handleError(errorMessage, e);
+		}
 		try {
 			connection.sendToSalesforce(new CustomObject[] { customObject });
 		} catch (Exception e) {
